@@ -1,9 +1,8 @@
-// Gantt Chart Application - Main JavaScript File
+// Custom Gantt Chart Application - Fixed Version
 class GanttChartApp {
     constructor() {
-        this.gantt = null;
         this.currentTasks = [];
-        this.currentViewMode = 'Week';
+        this.currentViewMode = 'weekly';
         this.editingTaskId = null;
 
         // Initial project data
@@ -284,113 +283,179 @@ class GanttChartApp {
         document.getElementById('loginPage').classList.add('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
 
-        // Initialize Gantt chart
-        setTimeout(() => this.initializeGantt(), 100);
+        // Initialize custom Gantt chart
+        setTimeout(() => this.renderCustomGantt(), 100);
     }
 
-    initializeGantt() {
-        const ganttContainer = document.getElementById('gantt');
-
-        if (!ganttContainer || !window.Gantt) {
-            console.error('Gantt container or Frappe Gantt library not found');
-            return;
-        }
-
+    renderCustomGantt() {
         try {
-            // Prepare tasks for Frappe Gantt
-            const ganttTasks = this.currentTasks.map(task => ({
-                id: task.id,
-                name: task.name,
-                start: task.start,
-                end: task.end,
-                progress: task.progress,
-                custom_class: task.category.toLowerCase()
-            }));
+            const container = document.getElementById('ganttTimeline');
+            if (!container) {
+                this.showMessage('Gantt container not found', 'error');
+                return;
+            }
 
-            // Create Gantt chart
-            this.gantt = new Gantt(ganttContainer, ganttTasks, {
-                header_height: 50,
-                column_width: 30,
-                step: 24,
-                view_modes: ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'],
-                bar_height: 20,
-                bar_corner_radius: 3,
-                arrow_curve: 5,
-                padding: 18,
-                view_mode: this.currentViewMode,
-                date_format: 'YYYY-MM-DD',
-                popup_trigger: 'click',
-                custom_popup_html: (task) => {
-                    const taskData = this.currentTasks.find(t => t.id === task.id);
-                    return `
-                        <div class="details-container">
-                            <h5>${task.name}</h5>
-                            <p><strong>Duration:</strong> ${task.start} to ${task.end}</p>
-                            <p><strong>Progress:</strong> ${task.progress}%</p>
-                            <p><strong>Category:</strong> ${taskData ? taskData.category : 'Unknown'}</p>
-                            <button onclick="window.ganttApp.editTask('${task.id}')" class="btn btn--primary btn--sm">Edit Task</button>
-                        </div>
-                    `;
-                },
-                on_click: (task) => {
-                    console.log('Task clicked:', task.name);
-                },
-                on_date_change: (task, start, end) => {
-                    this.updateTaskDates(task.id, start, end);
-                },
-                on_progress_change: (task, progress) => {
-                    this.updateTaskProgress(task.id, progress);
-                },
-                on_view_change: (mode) => {
-                    this.currentViewMode = mode;
-                    this.updateViewModeButtons();
-                }
+            // Clear existing content
+            container.innerHTML = '';
+
+            // Create header
+            const header = this.createGanttHeader();
+            container.appendChild(header);
+
+            // Create task rows
+            this.currentTasks.forEach(task => {
+                const row = this.createTaskRow(task);
+                container.appendChild(row);
             });
 
-            // Apply custom styling
-            this.applyCustomStyling();
+            this.showMessage('Gantt chart loaded successfully!', 'success');
 
         } catch (error) {
-            console.error('Error initializing Gantt chart:', error);
-            this.showMessage('Error loading Gantt chart. Please refresh the page.', 'error');
+            console.error('Error rendering Gantt chart:', error);
+            this.showMessage('Error loading Gantt chart. Chart created with custom implementation.', 'error');
         }
     }
 
-    applyCustomStyling() {
-        // Apply category-based colors to task bars
-        setTimeout(() => {
-            this.currentTasks.forEach(task => {
-                const color = this.categoryColors[task.category] || '#95a5a6';
-                const bars = document.querySelectorAll(`[data-id="${task.id}"] .bar`);
-                bars.forEach(bar => {
-                    bar.style.fill = color;
-                });
+    createGanttHeader() {
+        const header = document.createElement('div');
+        header.className = 'gantt-header';
 
-                const progressBars = document.querySelectorAll(`[data-id="${task.id}"] .bar-progress`);
-                progressBars.forEach(progressBar => {
-                    progressBar.style.fill = this.darkenColor(color, 20);
-                });
-            });
-        }, 500);
+        const taskLabelHeader = document.createElement('div');
+        taskLabelHeader.className = 'gantt-task-label';
+        taskLabelHeader.textContent = 'Task Name';
+
+        const timelineHeader = document.createElement('div');
+        timelineHeader.className = 'gantt-timeline-header';
+
+        // Create timeline columns based on view mode
+        const dates = this.getTimelineDates();
+        dates.forEach(date => {
+            const dateCol = document.createElement('div');
+            dateCol.style.flex = '1';
+            dateCol.style.textAlign = 'center';
+            dateCol.style.fontWeight = '600';
+            dateCol.style.fontSize = '12px';
+            dateCol.textContent = this.formatDateForHeader(date);
+            timelineHeader.appendChild(dateCol);
+        });
+
+        header.appendChild(taskLabelHeader);
+        header.appendChild(timelineHeader);
+
+        return header;
     }
 
-    darkenColor(color, percent) {
-        const num = parseInt(color.replace("#", ""), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = (num >> 16) - amt;
-        const G = (num >> 8 & 0x00FF) - amt;
-        const B = (num & 0x0000FF) - amt;
-        return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-            (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+    createTaskRow(task) {
+        const row = document.createElement('div');
+        row.className = 'gantt-row';
+        row.dataset.taskId = task.id;
+
+        // Task name cell
+        const nameCell = document.createElement('div');
+        nameCell.className = 'task-name';
+        nameCell.textContent = task.name;
+        nameCell.title = `${task.category} | ${task.progress}% complete`;
+        nameCell.addEventListener('click', () => this.editTask(task.id));
+
+        // Timeline cell
+        const timelineCell = document.createElement('div');
+        timelineCell.className = 'task-timeline';
+
+        // Create task bar
+        const taskBar = this.createTaskBar(task);
+        timelineCell.appendChild(taskBar);
+
+        row.appendChild(nameCell);
+        row.appendChild(timelineCell);
+
+        return row;
+    }
+
+    createTaskBar(task) {
+        const startDate = new Date(task.start);
+        const endDate = new Date(task.end);
+        const projectStart = new Date('2025-09-01');
+        const projectEnd = new Date('2025-11-30');
+
+        // Calculate position and width as percentages
+        const totalDays = (projectEnd - projectStart) / (1000 * 60 * 60 * 24);
+        const taskStartDays = (startDate - projectStart) / (1000 * 60 * 60 * 24);
+        const taskDuration = (endDate - startDate) / (1000 * 60 * 60 * 24) + 1;
+
+        const leftPercent = (taskStartDays / totalDays) * 100;
+        const widthPercent = (taskDuration / totalDays) * 100;
+
+        const taskBar = document.createElement('div');
+        taskBar.className = 'task-bar';
+        taskBar.style.backgroundColor = this.categoryColors[task.category] || '#95a5a6';
+        taskBar.style.position = 'absolute';
+        taskBar.style.left = `${leftPercent}%`;
+        taskBar.style.width = `${widthPercent}%`;
+        taskBar.title = `${task.name}\n${task.start} to ${task.end}\n${task.progress}% complete`;
+
+        // Task name in bar
+        const taskText = document.createElement('span');
+        taskText.textContent = task.name.length > 20 ? task.name.substring(0, 20) + '...' : task.name;
+        taskText.style.fontSize = '11px';
+        taskText.style.fontWeight = '500';
+
+        // Progress bar
+        const progressBar = document.createElement('div');
+        progressBar.className = 'task-progress';
+        progressBar.style.width = `${task.progress}%`;
+
+        // Progress text
+        const progressText = document.createElement('span');
+        progressText.className = 'progress-text';
+        progressText.textContent = `${task.progress}%`;
+
+        taskBar.appendChild(progressBar);
+        taskBar.appendChild(taskText);
+        taskBar.appendChild(progressText);
+
+        // Make task bar clickable
+        taskBar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.editTask(task.id);
+        });
+
+        return taskBar;
+    }
+
+    getTimelineDates() {
+        const dates = [];
+        const start = new Date('2025-09-01');
+        const end = new Date('2025-11-30');
+
+        if (this.currentViewMode === 'daily') {
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+                dates.push(new Date(d));
+            }
+        } else if (this.currentViewMode === 'weekly') {
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+                dates.push(new Date(d));
+            }
+        } else { // monthly
+            for (let d = new Date(start); d <= end; d.setMonth(d.getMonth() + 1)) {
+                dates.push(new Date(d));
+            }
+        }
+
+        return dates;
+    }
+
+    formatDateForHeader(date) {
+        if (this.currentViewMode === 'monthly') {
+            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        } else {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
     }
 
     changeViewMode(mode) {
         this.currentViewMode = mode;
-        if (this.gantt) {
-            this.gantt.change_view_mode(mode);
-        }
         this.updateViewModeButtons();
+        this.renderCustomGantt();
     }
 
     updateViewModeButtons() {
@@ -401,25 +466,6 @@ class GanttChartApp {
                 btn.classList.add('active');
             }
         });
-    }
-
-    updateTaskDates(taskId, start, end) {
-        const task = this.currentTasks.find(t => t.id === taskId);
-        if (task) {
-            task.start = start.toISOString().split('T')[0];
-            task.end = end.toISOString().split('T')[0];
-            this.saveTasks();
-            this.showMessage('Task dates updated successfully!', 'success');
-        }
-    }
-
-    updateTaskProgress(taskId, progress) {
-        const task = this.currentTasks.find(t => t.id === taskId);
-        if (task) {
-            task.progress = progress;
-            this.saveTasks();
-            this.showMessage(`Task progress updated to ${progress}%!`, 'success');
-        }
     }
 
     editTask(taskId) {
@@ -464,7 +510,7 @@ class GanttChartApp {
                 task.category = category;
 
                 this.saveTasks();
-                this.refreshGantt();
+                this.renderCustomGantt();
                 this.showMessage('Task updated successfully!', 'success');
             }
         }
@@ -478,7 +524,7 @@ class GanttChartApp {
         if (confirm('Are you sure you want to delete this task?')) {
             this.currentTasks = this.currentTasks.filter(t => t.id !== this.editingTaskId);
             this.saveTasks();
-            this.refreshGantt();
+            this.renderCustomGantt();
             this.showMessage('Task deleted successfully!', 'success');
             this.closeTaskModal();
         }
@@ -509,18 +555,11 @@ class GanttChartApp {
 
         this.currentTasks.push(newTask);
         this.saveTasks();
-        this.refreshGantt();
+        this.renderCustomGantt();
         this.showMessage('New task added successfully!', 'success');
 
         // Edit the new task immediately
         setTimeout(() => this.editTask(newId), 500);
-    }
-
-    refreshGantt() {
-        if (this.gantt) {
-            // Re-initialize the Gantt chart with updated data
-            this.initializeGantt();
-        }
     }
 
     closeTaskModal() {
@@ -587,5 +626,11 @@ window.closeTaskModal = function() {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    window.ganttApp = new GanttChartApp();
+    console.log('Initializing Gantt Chart Application...');
+    try {
+        window.ganttApp = new GanttChartApp();
+        console.log('Application initialized successfully');
+    } catch (error) {
+        console.error('Error initializing application:', error);
+    }
 });
