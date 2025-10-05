@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Federated Learning with Health IoT - Project Management</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.css">
     <style>
         :root {
             --primary-color: #2563eb;
@@ -169,6 +168,16 @@
             font-size: 0.875rem;
         }
 
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: var(--success-color);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
         /* Dashboard Styles */
         .dashboard {
             min-height: 100vh;
@@ -254,6 +263,7 @@
             display: flex;
             gap: 0.5rem;
             margin-bottom: 0.5rem;
+            flex-wrap: wrap;
         }
 
         .view-btn {
@@ -283,8 +293,9 @@
             margin-top: 1rem;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            overflow: hidden;
-            min-height: 400px;
+            overflow-x: auto;
+            min-height: 600px;
+            background: white;
         }
 
         .task-controls {
@@ -312,6 +323,114 @@
             width: 16px;
             height: 16px;
             border-radius: 4px;
+        }
+
+        /* Custom Gantt Chart Styles */
+        .custom-gantt {
+            width: 100%;
+            height: 600px;
+            padding: 20px;
+            overflow: auto;
+            background: #fafafa;
+        }
+
+        .gantt-timeline {
+            display: flex;
+            flex-direction: column;
+            min-width: 1200px;
+        }
+
+        .gantt-header {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+            padding: 10px 0;
+            margin-bottom: 10px;
+        }
+
+        .gantt-task-label {
+            width: 300px;
+            padding: 10px;
+            font-weight: 600;
+            border-right: 1px solid #ddd;
+            background: white;
+        }
+
+        .gantt-timeline-header {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: white;
+        }
+
+        .gantt-row {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            min-height: 50px;
+            align-items: center;
+        }
+
+        .gantt-row:hover {
+            background: #f9f9f9;
+        }
+
+        .task-name {
+            width: 300px;
+            padding: 10px;
+            border-right: 1px solid #ddd;
+            font-weight: 500;
+            cursor: pointer;
+            background: white;
+        }
+
+        .task-name:hover {
+            background: #f0f8ff;
+        }
+
+        .task-timeline {
+            flex: 1;
+            position: relative;
+            height: 50px;
+            padding: 10px;
+        }
+
+        .task-bar {
+            height: 30px;
+            border-radius: 4px;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+            font-weight: 500;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .task-bar:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .task-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: rgba(255,255,255,0.9);
         }
 
         /* Modal Styles */
@@ -415,56 +534,14 @@
             .category-legend {
                 justify-content: center;
             }
-        }
 
-        /* Frappe Gantt Customizations */
-        .gantt-container .gantt .grid-background .grid-row:nth-child(even) {
-            fill: rgba(0, 0, 0, 0.02);
-        }
+            .gantt-timeline {
+                min-width: 800px;
+            }
 
-        .gantt-container .gantt .bar {
-            rx: 4;
-            ry: 4;
-        }
-
-        .gantt-container .gantt .bar-progress {
-            rx: 4;
-            ry: 4;
-        }
-
-        .gantt-container .gantt .bar-label {
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .gantt-container .gantt .lower-text {
-            font-size: 11px;
-            fill: var(--text-secondary);
-        }
-
-        .gantt-container .gantt .upper-text {
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        .success-message {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: var(--success-color);
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .warning-message {
-            background: #fffbeb;
-            border: 1px solid #fed7aa;
-            color: var(--warning-color);
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
+            .task-name {
+                width: 200px;
+            }
         }
     </style>
 </head>
@@ -530,9 +607,9 @@
                 <div class="sidebar-section">
                     <span class="sidebar-label">View Mode</span>
                     <div class="view-controls">
-                        <button class="view-btn" data-mode="Day">Day</button>
-                        <button class="view-btn active" data-mode="Week">Week</button>
-                        <button class="view-btn" data-mode="Month">Month</button>
+                        <button class="view-btn" data-mode="daily">Daily</button>
+                        <button class="view-btn active" data-mode="weekly">Weekly</button>
+                        <button class="view-btn" data-mode="monthly">Monthly</button>
                     </div>
                 </div>
 
@@ -587,7 +664,11 @@
                 <div id="messageContainer"></div>
 
                 <div class="gantt-container">
-                    <svg id="gantt"></svg>
+                    <div id="customGantt" class="custom-gantt">
+                        <div class="gantt-timeline" id="ganttTimeline">
+                            <!-- Gantt chart will be rendered here -->
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -646,7 +727,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.umd.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
